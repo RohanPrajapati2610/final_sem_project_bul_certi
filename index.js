@@ -3,6 +3,7 @@ require('dotenv').config()
 require('./db_config')
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 
 let app=express();
 let UserRoutes=require('./routers/userRoutes')
@@ -17,6 +18,7 @@ if (!fs.existsSync('uploads/')) {
 }
 
 app.use(express.json())
+app.use(cors())
 app.use('/user',UserRoutes)
 app.use('/event',EventRoutes)
 app.use('/certificate',CertificateRoutes)

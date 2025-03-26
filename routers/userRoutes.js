@@ -9,4 +9,4 @@ router.delete('/deleteUser/:id',UserController.deleteUser)
 router.post('/createUser',UserController.CreateUser)
 router.post('/login',UserController.login)
 
-module.exports=router
+module.exports=router   

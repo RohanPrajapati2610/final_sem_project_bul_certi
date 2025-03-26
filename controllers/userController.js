@@ -105,7 +105,7 @@ const login = async (req, res) => {
             res.send({ message: "Organization not found" });
         }
 
-        if (req.body.password == user1.password) {
+        if (req.body.adminPassword == user1.adminPassword) {
              res.send({ message: "login successful" });
         }
         else
