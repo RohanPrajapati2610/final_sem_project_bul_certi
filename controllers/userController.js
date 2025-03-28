@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const user = require('../models/userModel')
+const jwt=require('jsonwebtoken')
 
 const CreateUser = (req, res) => {
     const user1 = new user({
@@ -100,6 +101,7 @@ const deleteUser = async (req, res) => {
 
 const login = async (req, res) => {
     try {
+
         const user1 = await user.findOne({ adminEmail: req.body.adminEmail });
         if (!user1) {
             res.send({ message: "Organization not found" });
@@ -112,7 +114,9 @@ const login = async (req, res) => {
         {
             res.send({ message: "invalid password " });
         }
-
+         
+       
+        
        
     } catch (error) {
         res.send({ message: error.message });

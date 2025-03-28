@@ -5,6 +5,11 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Template = require('../models/templateModel');
+const Event = require('../models/eventModel');
+const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
+const crypto = require('crypto');
 
 // Set up multer storage
 const storage = multer.diskStorage({
@@ -351,6 +356,129 @@ const verifyCertificate = async (req, res) => {
     }
 };
 
+// Function to generate a unique certificate ID
+const generateUniqueCertificateId = () => {
+    return crypto.randomBytes(8).toString('hex').toUpperCase();
+};
+
+// Function to generate QR code
+const generateQRCode = async (certificateId, verificationUrl) => {
+    return await QRCode.toDataURL(verificationUrl);
+};
+
+// Function to generate certificate PDF
+const generateCertificatePdf = async (req, res) => {
+    try {
+        const { eventId, recipientName, recipientEmail, templateId } = req.body;
+
+        // Get event details
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).send({
+                msg: "Event not found",
+                isSuccess: false
+            });
+        }
+
+        // Get template details
+        const template = await Template.findById(templateId);
+        if (!template) {
+            return res.status(404).send({
+                msg: "Template not found",
+                isSuccess: false
+            });
+        }
+
+        // Generate unique certificate ID
+        const certificateId = generateUniqueCertificateId();
+
+        // Create verification URL
+        const verificationUrl = `http://localhost:7000/certificate/verify/${certificateId}`;
+
+        // Generate QR code
+        const qrCodeDataUrl = await generateQRCode(certificateId, verificationUrl);
+
+        // Create a new PDF document
+        const doc = new PDFDocument({
+            layout: 'landscape',
+            size: 'A4'
+        });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=certificate-${certificateId}.pdf`);
+
+        // Pipe the PDF to the response
+        doc.pipe(res);
+
+        // Add background image if exists
+        if (template.backgroundImage) {
+            doc.image(template.backgroundImage, 0, 0, {
+                width: doc.page.width,
+                height: doc.page.height
+            });
+        }
+
+        // Add certificate content
+        doc.font('Helvetica-Bold')
+           .fontSize(30)
+           .text('CERTIFICATE', { align: 'center' })
+           .moveDown();
+
+        doc.fontSize(20)
+           .text(`This is to certify that`, { align: 'center' })
+           .moveDown();
+
+        doc.fontSize(25)
+           .text(recipientName, { align: 'center' })
+           .moveDown();
+
+        doc.fontSize(20)
+           .text(`has successfully participated in`, { align: 'center' })
+           .moveDown();
+
+        doc.fontSize(25)
+           .text(event.eventName, { align: 'center' })
+           .moveDown();
+
+        doc.fontSize(15)
+           .text(`Date: ${new Date(event.eventDate).toLocaleDateString()}`, { align: 'center' })
+           .moveDown();
+
+        // Add QR code
+        const qrCodeImage = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64');
+        doc.image(qrCodeImage, doc.page.width - 150, doc.page.height - 150, {
+            width: 100
+        });
+
+        // Add certificate ID
+        doc.fontSize(12)
+           .text(`Certificate ID: ${certificateId}`, doc.page.width - 200, doc.page.height - 40);
+
+        // Save certificate in database
+        const newCertificate = new certificate({
+            certificateId: certificateId,
+            eventId: eventId,
+            candidateName: recipientName,
+            email: recipientEmail,
+            templateId: templateId,
+            description: `Certificate for ${event.eventName}`
+        });
+        await newCertificate.save();
+
+        // Finalize PDF
+        doc.end();
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        res.status(500).send({
+            msg: "Error generating certificate PDF",
+            isSuccess: false,
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createCertificate,
     sendCertificate,
@@ -358,5 +486,6 @@ module.exports = {
     getCertificatesByEvent,
     verifyCertificate,
     generateBulkCertificates,
-    sendBulkCertificates
+    sendBulkCertificates,
+    generateCertificatePdf
 }

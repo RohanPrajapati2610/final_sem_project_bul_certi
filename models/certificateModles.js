@@ -6,6 +6,16 @@ const certificateSchema = new mongoose.Schema({
     ref: 'Event',
     required: true
   },
+  templateId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Template',
+    required: true
+  },
+  certificateId: {
+    type: String,
+    unique: true,
+    required: true
+  },
   candidateName: {
     type: String,
     required: true

@@ -1,11 +1,19 @@
-const express=require('express')
-const EventController=require('../controllers/eventController')
+const express = require('express');
+const EventController = require('../controllers/eventController');
+const { validate, eventSchema } = require('../middleware/validation');
+const { verifyToken, isOrganization } = require('../middleware/auth');
 
-const router=express.Router()
-router.get('/getEvent',EventController.getEvent)
-router.get('/getEventById/:id',EventController.getEventById)
+const router = express.Router();
 
-router.delete('/deleteEvent/:id',EventController.deleteEvent)
-router.post('/createEvent',EventController.createEvent)
+// Protected routes
+router.use(verifyToken);
 
-module.exports=router
+// Public routes (but authenticated)
+router.get('/getEvent', EventController.getEvent);
+router.get('/getEventById/:id', EventController.getEventById);
+
+// Organization-only routes
+router.post('/createEvent', isOrganization, validate(eventSchema.create), EventController.createEvent);
+router.delete('/deleteEvent/:id', isOrganization, EventController.deleteEvent);
+
+module.exports = router;
